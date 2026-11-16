@@ -1,0 +1,274 @@
+%% ahli.sty
+%% Shared template code for AHLI venues (CHIL and ML4H).
+%% Use on top of the unmodified jmlr class (v1.30 from CTAN):
+%%
+%%   \documentclass[pmlr,twocolumn,10pt]{jmlr}
+%%   \usepackage[venue=chil]{ahli}                   % CHIL, review version
+%%   \usepackage[venue=ml4h,track=findings]{ahli}    % ML4H, review version
+%%   \usepackage[venue=chil,final,volume=123]{ahli}  % camera-ready version
+%%
+%% Options
+%%   venue=chil|ml4h   required
+%%   track=...         required if the venue has more than one track
+%%   review            default. Line numbers on, authors hidden.
+%%   final             camera-ready. Line numbers off, authors shown.
+%%   year=YYYY         default is set in section 1 below
+%%   volume=N          PMLR volume number (final version only)
+%%
+%% Chairs: everything that changes from year to year is in section 1.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ahli}[2026/11/16 v1.0 AHLI template for CHIL and ML4H]
+
+\@ifclassloaded{jmlr}{}{%
+  \PackageError{ahli}{This package needs the jmlr class.\MessageBreak
+    Use \string\documentclass[pmlr,twocolumn,10pt]{jmlr}}{}}
+\RequirePackage{xkeyval}
+\RequirePackage{etoolbox}
+
+%% ---------------------------------------------------------------------
+%% Internal helpers for section 1 (no need to edit)
+%% ---------------------------------------------------------------------
+% \ahli@defvenue{id}{short name}{full name}{default track}{call for papers URL}
+% Leave the default track empty if authors must choose a track.
+\newcommand*{\ahli@defvenue}[5]{%
+  \@namedef{ahli@V@#1@short}{#2}%
+  \@namedef{ahli@V@#1@long}{#3}%
+  \@namedef{ahli@V@#1@default}{#4}%
+  \@namedef{ahli@V@#1@cfp}{#5}%
+}
+% \ahli@deftrack{venue}{track}{display name}
+%   {pmlr: true|false}        published in PMLR (volume and year in the header)
+%   {anonymous: true|false}   authors hidden in the review version
+%   {statements: true|false}  required sections at the end of the paper
+%   {page limit text}         only shown in the instructions, not enforced
+%   {extra note}              extra sentence for the instructions, can be empty
+\newcommand{\ahli@deftrack}[8]{%
+  \@namedef{ahli@T@#1@#2@name}{#3}%
+  \@namedef{ahli@T@#1@#2@pmlr}{#4}%
+  \@namedef{ahli@T@#1@#2@anonymous}{#5}%
+  \@namedef{ahli@T@#1@#2@statements}{#6}%
+  \@namedef{ahli@T@#1@#2@pagelimit}{#7}%
+  \@namedef{ahli@T@#1@#2@note}{#8}%
+}
+
+%% =====================================================================
+%% 1. VENUE AND TRACK SETTINGS (edit here each year)
+%% =====================================================================
+\newcommand*{\ahli@year}{2027}
+
+\ahli@defvenue{chil}{CHIL}
+  {Conference on Health, Inference, and Learning (CHIL)}
+  {proceedings}
+  {https://chil.ahli.cc/}
+
+\ahli@deftrack{chil}{proceedings}{Main Conference}
+  {true}{true}{true}
+  {8 to 10 pages including all figures and tables. References, the
+   required sections at the end and appendices do not count}
+  {}
+
+\ahli@defvenue{ml4h}{ML4H}
+  {Machine Learning for Health (ML4H)}
+  {}
+  {https://ahli.cc/ml4h/call-for-papers/}
+
+\ahli@deftrack{ml4h}{proceedings}{Proceedings Track}
+  {true}{true}{true}
+  {up to 8 pages at submission. References, the required sections at the
+   end and appendices do not count. Accepted papers get 1 additional
+   content page for the camera-ready version}
+  {}
+
+\ahli@deftrack{ml4h}{findings}{Findings Track}
+  {false}{true}{true}
+  {up to 4 pages at submission. References, the required sections at the
+   end and appendices do not count}
+  {}
+
+\ahli@deftrack{ml4h}{demo}{Demo Track}
+  {false}{false}{false}
+  {up to 2 pages at submission. References and appendices do not count}
+  {Demo Track papers do not need an abstract.}
+
+\ahli@deftrack{ml4h}{perspective}{Perspective Track}
+  {true}{false}{false}
+  {not limited to a fixed number of pages}
+  {}
+
+%% =====================================================================
+%% 2. OPTIONS
+%% =====================================================================
+\newcommand*{\ahli@venue}{}
+\newcommand*{\ahli@track}{}
+\newcommand*{\ahli@volume}{XXX}
+\newbool{ahli@final}
+\DeclareOptionX{venue}{\renewcommand*{\ahli@venue}{#1}}
+\DeclareOptionX{track}{\renewcommand*{\ahli@track}{#1}}
+\DeclareOptionX{year}{\renewcommand*{\ahli@year}{#1}}
+\DeclareOptionX{volume}{\renewcommand*{\ahli@volume}{#1}}
+\DeclareOptionX{review}{\boolfalse{ahli@final}}
+\DeclareOptionX{final}{\booltrue{ahli@final}}
+\ProcessOptionsX\relax
+
+%% =====================================================================
+%% 3. RESOLVE VENUE AND TRACK
+%% =====================================================================
+\newbool{ahli@pmlr}
+\newbool{ahli@anonymous}
+\newbool{ahli@statements}
+\newbool{ahli@trackok}
+\newcommand*{\ahli@short}{AHLI}
+\newcommand*{\ahli@long}{AHLI}
+\newcommand*{\ahli@cfp}{https://ahli.cc/}
+\newcommand*{\ahli@default}{}
+\newcommand*{\ahli@problem}{}
+\newcommand*{\ahlitrackname}{\textcolor{red}{[no track set]}}
+\newcommand*{\ahlipagelimit}{\textcolor{red}{[no track set]}}
+\newcommand*{\ahlitracknote}{}
+
+\ifcsname ahli@V@\ahli@venue @short\endcsname
+  \edef\ahli@short{\csname ahli@V@\ahli@venue @short\endcsname}%
+  \edef\ahli@long{\csname ahli@V@\ahli@venue @long\endcsname}%
+  \edef\ahli@cfp{\csname ahli@V@\ahli@venue @cfp\endcsname}%
+  \edef\ahli@default{\csname ahli@V@\ahli@venue @default\endcsname}%
+  \ifx\ahli@track\@empty \let\ahli@track\ahli@default \fi
+  \ifcsname ahli@T@\ahli@venue @\ahli@track @name\endcsname
+    \booltrue{ahli@trackok}%
+    \edef\ahli@prefix{ahli@T@\ahli@venue @\ahli@track @}%
+    \letcs\ahlitrackname{\ahli@prefix name}%
+    \letcs\ahlipagelimit{\ahli@prefix pagelimit}%
+    \letcs\ahlitracknote{\ahli@prefix note}%
+    \setbool{ahli@pmlr}{\csname\ahli@prefix pmlr\endcsname}%
+    \setbool{ahli@anonymous}{\csname\ahli@prefix anonymous\endcsname}%
+    \setbool{ahli@statements}{\csname\ahli@prefix statements\endcsname}%
+  \else
+    \ifx\ahli@track\@empty
+      \def\ahli@problem{\ahli@short: no track specified. Add the option
+        track=... to \string\usepackage[...]\string{ahli\string}}%
+    \else
+      \edef\ahli@problem{\ahli@short: unknown track
+        `\ahli@track'. Check the option track=... of
+        \string\usepackage[...]\string{ahli\string}}%
+    \fi
+  \fi
+\else
+  \def\ahli@problem{No valid venue specified. Use
+    \string\usepackage[venue=chil]\string{ahli\string} or
+    \string\usepackage[venue=ml4h,track=...]\string{ahli\string}}%
+\fi
+
+% A missing or wrong venue or track gives an error and a red box on page 1.
+\ifbool{ahli@trackok}{}{%
+  \PackageError{ahli}{\ahli@problem}{}%
+  \AtBeginDocument{%
+    \onecolumn
+    \noindent\fcolorbox{red}{red!10}{%
+      \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\centering
+        \color{red}\bfseries\ttfamily\ahli@problem}}\par\vspace{1em}%
+    \twocolumn
+  }%
+}
+
+%% Commands for use in the paper
+\newcommand*{\ahlivenue}{\ahli@short~\ahli@year}
+\newcommand*{\ahlivenuename}{\ahli@long~\ahli@year}
+\newcommand*{\ahlicfp}{\expandafter\url\expandafter{\ahli@cfp}}
+% Note for the required sections at the end of the paper
+\newcommand*{\ahlirequired}{%
+  \ifbool{ahli@statements}%
+    {This section is \textbf{required} for \ahlivenue\ (\ahlitrackname).}%
+    {This section is \textbf{not required} for \ahlivenue\
+     (\ahlitrackname). You can delete it.}}
+
+%% =====================================================================
+%% 4. PAGE HEADER AND FOOTER
+%% =====================================================================
+% Venues with one track do not show the track name in the header.
+\ifx\ahli@default\@empty
+  \newcommand*{\ahli@headtrack}{: \ahlitrackname}
+  \newcommand*{\ahli@headtrackfinal}{ - \ahlitrackname}
+\else
+  \newcommand*{\ahli@headtrack}{}
+  \newcommand*{\ahli@headtrackfinal}{}
+\fi
+\ifbool{ahli@trackok}{%
+  \ifbool{ahli@final}{%
+    \ifbool{ahli@pmlr}{%
+      % "Proceedings of Machine Learning Research <volume>:<pages>, <year>"
+      \jmlrpmlr
+      \jmlrvolume{\ahli@volume}%
+      \jmlryear{\ahli@year}%
+    }{%
+      \jmlrproceedings{}{\ahli@short\ \ahli@year\ahli@headtrackfinal}%
+      \jmlrvolume{}\jmlrpages{}\jmlryear{}%
+    }%
+  }{%
+    \jmlrproceedings{}{Submitted to \ahli@short\ \ahli@year\ahli@headtrack}%
+    \jmlrvolume{}\jmlrpages{}\jmlryear{}%
+  }%
+}{%
+  \jmlrproceedings{}{\textcolor{red}{\bfseries Please set venue and track}}%
+  \jmlrvolume{}\jmlrpages{}\jmlryear{}%
+}
+\jmlrworkshop{\ahli@long\ \ahli@year}
+
+% Copyright line at the bottom of page 1. Only in the final version.
+\renewcommand*{\@titlefoot}{%
+  \ifbool{ahli@final}%
+    {\scriptsize\copyright\space\ahli@year\space\@jmlr@authors.}{}%
+  \hfill\@reprint}
+
+% Short title in the header of every page (same as the 2026 templates).
+\def\ps@jmlrps{%
+  \let\@mkboth\@gobbletwo
+  \def\@oddhead{\hfill {\small\scshape \@shorttitle} \hfill}%
+  \def\@oddfoot{\hfill \small\rmfamily \thepage \hfill}%
+  \let\@evenhead\@oddhead
+  \let\@evenfoot\@oddfoot
+}
+\pagestyle{jmlrps}
+
+%% =====================================================================
+%% 5. PAGE LAYOUT (same values as the 2026 CHIL and ML4H templates)
+%% =====================================================================
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+\setlength{\marginparwidth}{0.07in}
+\setlength{\textheight}{8.5in}
+\setlength{\textwidth}{6.5in}
+\if@twocolumn
+  \setlength{\columnwidth}{\dimexpr(\textwidth-\columnsep)/2\relax}
+  \setlength{\hsize}{\columnwidth}
+  \setlength{\linewidth}{\columnwidth}
+\fi
+
+%% =====================================================================
+%% 6. REVIEW VERSION: line numbers and hidden authors
+%% =====================================================================
+\ifbool{ahli@final}{}{%
+  \RequirePackage[switch]{lineno}%
+  \linenumbers
+  \ifbool{ahli@anonymous}{%
+    \AtBeginDocument{\author{Anonymous Author(s)}}%
+    \renewcommand{\acks}[1]{}%
+  }{}%
+}
+
+%% =====================================================================
+%% 7. SMALL SHARED DEFINITIONS
+%% =====================================================================
+% Footnote for equal contribution. Use after \Name{...}.
+\providecommand{\equal}[1]{{\hypersetup{linkcolor=black}\thanks{#1}}}
+% URLs in the text font.
+\urlstyle{same}
+
+% Packages that break the production of the proceedings.
+% subfig stops with an error, as in the 2026 templates.
+\renewcommand*{\@jmlr@check@warn}[1]{\PackageWarning{ahli}{#1}}
+\AtBeginDocument{%
+  \@ifpackageloaded{subfig}{%
+    \PackageError{ahli}{Package `subfig' detected.\MessageBreak
+      Please use \string\subfigure\space and \string\subtable\space
+      instead}{}}{}%
+}
+\endinput
