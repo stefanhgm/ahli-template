@@ -194,10 +194,11 @@
 \ifbool{ahli@trackok}{%
   \ifbool{ahli@final}{%
     \ifbool{ahli@pmlr}{%
-      % "Proceedings of Machine Learning Research <volume>:<pages>, <year>"
+      % "Proceedings of Machine Learning Research <volume>, <year>"
+      % No page range, as in the ML4H 2026 template.
       \jmlrpmlr
-      \jmlrvolume{\ahli@volume}%
-      \jmlryear{\ahli@year}%
+      \jmlrvolume{\ahli@volume, \ahli@year}%
+      \jmlrpages{}\jmlryear{}%
     }{%
       \jmlrproceedings{}{\ahli@short\ \ahli@year\ahli@headtrackfinal}%
       \jmlrvolume{}\jmlrpages{}\jmlryear{}%

@@ -96,6 +96,7 @@ required sections at the end of the paper.
     \item The page limit is: \ahlipagelimit. \ahlitracknote
     \item Select venue, track and version in the \verb|\usepackage[...]{ahli}| line at the top of this file. The review version adds line numbers and hides the authors automatically. Use the option \texttt{final} for the camera-ready version.
     \item Please use the packages that are loaded automatically (amsmath, amssymb, natbib, graphicx, url, algorithm2e) to manage references, write equations, and include figures and algorithms. Other packages can create problems in the production of the proceedings.
+    \item Every figure needs a short description for screen readers: \verb|\includegraphics[alt={...}]{...}|.
     \item References must be included in a .bib file.
     \item Please write your paper in a single .tex file.
     \item The required sections (Data and Code Availability, Institutional Review Board, Statement on AI Usage) go at the end of the paper, before the references.
@@ -440,6 +441,8 @@ for external graphics files but omit the file extension. Do not
 use \verb|\epsfig| or \verb|\psfig|. If you want to scale the
 image, it's better to use a fraction of the line width rather
 than an explicit length. For example, see \figureref{fig:nodes}.
+Please describe each figure in a few words with the \texttt{alt} option of
+\verb|\includegraphics|. Screen readers use this text.
 
 \begin{figure}[htbp]
  % Caption and label go in the first argument and the figure contents
@@ -447,7 +450,7 @@ than an explicit length. For example, see \figureref{fig:nodes}.
 \floatconts
   {fig:nodes}
   {\caption{Example Image}}
-  {\includegraphics[width=0.5\linewidth]{images/nodes}}
+  {\includegraphics[width=0.5\linewidth,alt={Diagram of connected nodes with one input and one output}]{images/nodes}}
 \end{figure}
 
 If your image is made up of \LaTeX\ code (for example, commands
